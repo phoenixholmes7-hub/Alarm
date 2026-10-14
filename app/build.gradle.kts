@@ -56,6 +56,12 @@ kotlin {
 }
 
 dependencies {
-    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    // Barcode scanning: CameraX + Google ML Kit (bundled model, works offline, no Play Services needed)
+    val camerax = "1.3.4"
+    implementation("androidx.camera:camera-camera2:$camerax")
+    implementation("androidx.camera:camera-lifecycle:$camerax")
+    implementation("androidx.camera:camera-view:$camerax")
+    implementation("androidx.lifecycle:lifecycle-runtime:2.6.2")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation("com.google.android.gms:play-services-wearable:18.2.0")
 }

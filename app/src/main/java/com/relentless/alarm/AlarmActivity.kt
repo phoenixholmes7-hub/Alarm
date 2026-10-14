@@ -228,6 +228,7 @@ class AlarmActivity : Activity() {
         unregisterSensor()
         sensorListener = null
         scanner?.pause()
+        scanner?.release()
         scanner = null
         missionHandler.removeCallbacksAndMessages(null)
         currentFocus?.let {
@@ -440,16 +441,25 @@ class AlarmActivity : Activity() {
     private fun motionMission(m: Mission, steps: Boolean) {
         var count = 0
         var last = 0L
+        var gotEvents = false
         val big = label("${m.count}", 96f, Colors.ACCENT, bold = true, center = true)
-        val sub = label(if (steps) "steps to go — get up and walk" else "shakes to go — shake it hard!", 18f, Colors.SUB, center = true)
+        val sub = label(if (steps) "steps to go. Get up and walk!" else "shakes to go. Shake it hard!", 18f, Colors.SUB, center = true)
         val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = m.count
             progress = 0
         }
-        body.addView(spacer(40))
+        // Live intensity meter so you can see the sensor reacting.
+        val meterTrack = FrameLayout(this).apply { background = rounded(Colors.CARD_HI, 6) }
+        val meterFill = View(this).apply { background = rounded(Colors.ACCENT, 6) }
+        meterTrack.addView(meterFill, FrameLayout.LayoutParams(0, MATCH))
+        val hint = label("", 14f, Colors.SUB, center = true)
+        body.addView(spacer(30))
         body.addView(big, llp())
         body.addView(sub, llp())
         body.addView(bar, llp(top = 24))
+        body.addView(label(if (steps) "Movement" else "Shake strength", 12f, Colors.SUB), llp(top = 22))
+        body.addView(meterTrack, llp(MATCH, dp(12), top = 6))
+        body.addView(hint, llp(top = 10))
 
         fun bump() {
             count++
@@ -464,25 +474,45 @@ class AlarmActivity : Activity() {
         }
 
         val sm = getSystemService(SensorManager::class.java)
-        val canUseStepSensor = steps && sm.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR) != null &&
-            (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
-                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED)
+        val accel = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        if (accel == null) {
+            replaceWithMath("This phone has no motion sensor, so it's math instead")
+            return
+        }
+        // How far the reading must move away from resting gravity. Phones whose sensor tops out at 2 g
+        // can't report big spikes, so the bar is capped relative to the sensor's range.
+        val range = accel.maximumRange.takeIf { it > 0f } ?: 19.6f
+        val threshold = if (steps) minOf(2.6f, range * 0.15f) else minOf(8f, range * 0.38f)
+        val gap = if (steps) 320L else 220L
+        var gravity = SensorManager.GRAVITY_EARTH
+        var armed = true
 
-        if (canUseStepSensor) {
-            listen(Sensor.TYPE_STEP_DETECTOR) { bump() }
-        } else {
-            val threshold = if (steps) 1.3f else 2.2f
-            val gap = if (steps) 330L else 180L
-            listen(Sensor.TYPE_ACCELEROMETER) { e ->
-                val g = sqrt(e.values[0] * e.values[0] + e.values[1] * e.values[1] + e.values[2] * e.values[2]) /
-                    SensorManager.GRAVITY_EARTH
-                val now = System.currentTimeMillis()
-                if (g > threshold && now - last > gap) {
-                    last = now
-                    bump()
-                }
+        listen(Sensor.TYPE_ACCELEROMETER) { e ->
+            gotEvents = true
+            val x = e.values[0]; val y = e.values[1]; val z = e.values[2]
+            val mag = sqrt(x * x + y * y + z * z)
+            // Slowly track the resting level (corrects for slightly-off sensor calibration).
+            gravity = gravity * 0.98f + mag * 0.02f
+            val force = kotlin.math.abs(mag - gravity)
+            val pct = (force / threshold).coerceAtMost(1f)
+            meterFill.layoutParams = meterFill.layoutParams.apply { width = (meterTrack.width * pct).toInt() }
+            meterFill.requestLayout()
+            val now = System.currentTimeMillis()
+            if (force > threshold && armed && now - last > gap) {
+                last = now
+                armed = false
+                bump()
+            } else if (force < threshold * 0.5f) {
+                armed = true // must settle a bit between counts, so one long jolt isn't counted many times
             }
         }
+        missionHandler.postDelayed({
+            if (!gotEvents) {
+                hint.text = "The motion sensor isn't responding."
+                hint.setTextColor(Colors.WARN)
+                replaceWithMath("Motion sensor not responding, so it's math instead")
+            }
+        }, 4000)
     }
 
     private fun listen(type: Int, onEvent: (SensorEvent) -> Unit) {
@@ -522,8 +552,8 @@ class AlarmActivity : Activity() {
             replaceWithMath("Camera permission is off, so it's hard math instead")
             return
         }
-        // Walking to the item takes a while: keep the alarm quiet for a minute to get there.
-        AlarmService.userActive(60_000L)
+        // Walking to the item takes a while: keep the alarm quiet for 90 s to get there.
+        AlarmService.userActive(90_000L)
         val item = m.note.ifBlank { "your item" }
         body.addView(label("Go find your", 17f, Colors.SUB, center = true), llp(top = 14))
         body.addView(label(item, 34f, Colors.ACCENT, center = true).apply { typeface = holmesFont() }, llp(top = 2))
@@ -531,7 +561,6 @@ class AlarmActivity : Activity() {
         val status = label("Point the camera at its barcode", 15f, Colors.SUB, center = true)
         var cameraFailed = false
         val view = ItemScanner(this)
-        view.onActivity = { AlarmService.userActive(20_000L) }
         view.onScan = { code ->
             AlarmService.userActive(20_000L)
             if (normalizeCode(code) == normalizeCode(m.code)) {
@@ -620,6 +649,7 @@ class AlarmActivity : Activity() {
     }
 
     override fun onDestroy() {
+        scanner?.release()
         missionHandler.removeCallbacksAndMessages(null)
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()

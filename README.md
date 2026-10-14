@@ -11,7 +11,7 @@ The only way to turn it off is to complete the alarm's missions.
   - ⌨️ **Typing**: type phrases exactly
   - 📳 **Shake**: shake the phone N times
   - 🚶 **Steps**: walk N steps
-  - 🔍 **Find the item**: walk to an item you registered in another room (like your toothpaste) and scan its barcode. It has a flashlight button, green/red feedback, and a minute of quiet to get there. If you really can't find the item, a hard-math option unlocks after 5 minutes.
+  - 🔍 **Find the item**: walk to an item you registered in another room (like your toothpaste) and scan its barcode. Uses Google ML Kit + CameraX, so it reads codes at any angle, small or curved, and in dim light (with a flashlight button). It gives green/red feedback and 90 seconds of quiet to walk there. If you really can't find the item, a hard-math option unlocks after 5 minutes.
 - **Quiet while you work.** The sound drops while you're doing a mission and returns at full volume if you stop for 12 seconds.
 - **Wake-up check.** A few minutes after you dismiss the alarm, you have to confirm you're awake. If you don't, the full alarm starts again.
 - **Limited snoozes** for each alarm (0–5).

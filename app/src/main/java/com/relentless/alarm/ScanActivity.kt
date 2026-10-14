@@ -161,6 +161,7 @@ class ScanActivity : Activity() {
     }
 
     override fun onDestroy() {
+        scanner.release()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }

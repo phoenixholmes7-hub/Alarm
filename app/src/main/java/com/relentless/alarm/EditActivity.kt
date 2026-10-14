@@ -1,12 +1,9 @@
 package com.relentless.alarm
 
-import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -240,11 +237,6 @@ class EditActivity : Activity() {
                 }
             }
             else -> {
-                if (m.type == MissionType.STEPS && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-                    checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    requestPermissions(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION), 2)
-                }
                 val opts = MissionType.countOptions(m.type)
                 choose("How many ${MissionType.unit(m.type)}?", opts.map { "$it" }) { ci ->
                     m.count = opts[ci]
