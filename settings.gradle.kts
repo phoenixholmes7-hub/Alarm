@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "WakeUpHolmes"
-include(":app")
+include(":app", ":wear")

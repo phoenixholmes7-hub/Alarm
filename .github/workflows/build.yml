@@ -25,11 +25,14 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease
           cp app/build/outputs/apk/release/app-release.apk WakeUpHolmes.apk
+          cp wear/build/outputs/apk/release/wear-release.apk WakeUpHolmes-Watch.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: WakeUpHolmes
-          path: WakeUpHolmes.apk
+          path: |
+            WakeUpHolmes.apk
+            WakeUpHolmes-Watch.apk
 
       - name: Publish as the "latest" release
         env:
@@ -37,8 +40,8 @@ jobs:
         run: |
           gh release delete latest --yes --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
           sleep 3
-          gh release create latest WakeUpHolmes.apk \
+          gh release create latest WakeUpHolmes.apk WakeUpHolmes-Watch.apk \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "Wake Up Holmes (latest build)" \
-            --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Download WakeUpHolmes.apk on your phone and open it to install."
+            --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Phone: download WakeUpHolmes.apk on your phone and open it. Watch: see the README for installing WakeUpHolmes-Watch.apk."

@@ -59,6 +59,34 @@ class SettingsActivity : Activity() {
             },
         )
 
+        section("Galaxy Watch")
+        val watchStatus = label("Checking…", 15f, Colors.SUB)
+        val watchRow = horizontal().apply {
+            setPadding(dp(16), dp(15), dp(16), dp(15))
+            addView(label("Watch", 16f), llp(0, WRAP, 1f))
+            addView(watchStatus)
+        }
+        val testRow = row("Test buzz on the watch", "Send ›") {
+            WatchBridge.send(
+                this, WatchBridge.TEST,
+                org.json.JSONObject().put("mode", "alarm").put("label", "Test").put("missions", "🔍 Find: your item").toString()
+            )
+            Toast.makeText(this, "Sent. Your watch should buzz for a few seconds.", Toast.LENGTH_SHORT).show()
+        }
+        group(watchRow, testRow)
+        content.addView(
+            label("Install the Wake Up Holmes watch app (see the README) and open it once on the watch.", 13f, Colors.DIM),
+            llp(top = 6)
+        )
+        WatchBridge.connectedWatches(this) { names ->
+            watchStatus.text = when {
+                names == null -> "Wear OS not available"
+                names.isEmpty() -> "Not connected"
+                else -> "✓ ${names.joinToString()}"
+            }
+            watchStatus.setTextColor(if (names.isNullOrEmpty()) Colors.SUB else Colors.OK)
+        }
+
         section("Make sure it works")
         content.addView(button("Ring a test alarm in 10 seconds", Colors.CARD_HI, 16f) { testAlarm() }, llp(top = 8))
         val checks = Setup.checks(this)

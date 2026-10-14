@@ -236,6 +236,16 @@ class AlarmService : Service() {
         tick = 0
         handler.post(ticker)
         launchActivity()
+        WatchBridge.send(this, WatchBridge.RING, watchPayload())
+    }
+
+    private fun watchPayload(): String {
+        val a = store.alarm(currentAlarmId)
+        return org.json.JSONObject()
+            .put("mode", currentMode)
+            .put("label", a?.label?.ifBlank { null } ?: if (currentMode == Scheduler.MODE_CHECK) "Wake-up check" else "Alarm")
+            .put("missions", a?.missions?.joinToString("  →  ") { "${MissionType.icon(it.type)} ${it.describe()}" } ?: "")
+            .toString()
     }
 
     private val ticker = object : Runnable {
@@ -252,6 +262,8 @@ class AlarmService : Service() {
                 siren.start(appliedVolume.coerceAtLeast(0.1f))
             }
             if (tick % 4 == 0 && !AlarmActivity.visible) launchActivity()
+            // Keep the watch buzzing (and catch a watch that reconnects mid-alarm).
+            if (tick % 20 == 0) WatchBridge.send(this@AlarmService, WatchBridge.RING, watchPayload())
             if (tick % 60 == 1) {
                 Scheduler.scheduleWatchdog(this@AlarmService, currentAlarmId)
                 acquireWakeLock()
@@ -486,6 +498,7 @@ class AlarmService : Service() {
         handler.removeCallbacksAndMessages(null)
         stopOutputs()
         if (was) {
+            WatchBridge.send(this, WatchBridge.STOP)
             store.clearRinging()
             Scheduler.cancelExtra(this)
             after()

@@ -20,11 +20,31 @@ The only way to turn it off is to complete the alarm's missions.
 - **Reliable.** Alarms are scheduled with `setAlarmClock` (exempt from Doze). They survive reboots (even before you unlock the phone), time and timezone changes, and app updates. While the alarm rings, a watchdog alarm brings it back if Android kills the app.
 - **Setup checklist** in the app finds every phone setting that could block an alarm, and **Test** rings 10 seconds later so you can check it on the lock screen.
 
-## Install
+## Install (phone)
 
 Every push builds the app with GitHub Actions. Download `WakeUpHolmes.apk` from the
 [**latest release**](../../releases/tag/latest) on your phone and open it. You may need to allow
 "Install unknown apps" for your browser. Then open the app and fix everything in the checklist.
+
+## Galaxy Watch (Wear OS) app
+
+When the phone alarm rings, the watch shows a full-screen alarm and buzzes hard until you finish
+the mission **on the phone**. There's no way to turn it off from the watch. It also stops by itself
+if it loses contact with the phone for 90 seconds.
+
+Samsung's Galaxy Wearable app can't install APK files, so you install `WakeUpHolmes-Watch.apk` once over Wi-Fi:
+
+1. **On the watch:** Settings › About watch › Software › tap *Software version* 5 times to unlock Developer options.
+   Then Settings › Developer options: turn on **ADB debugging** and **Wireless debugging**.
+2. Make sure the watch and phone are on the **same Wi-Fi**.
+3. **On the phone:** install a Wear OS sideloading app from the Play Store, such as **"Bugjaeger"** or **"Wear Installer 2"**.
+   Download `WakeUpHolmes-Watch.apk` from the latest release.
+4. In that app, enter the watch's IP address and port (shown under Wireless debugging on the watch), pair if asked,
+   then install `WakeUpHolmes-Watch.apk`.
+5. Open **Wake Up Holmes** on the watch once and allow notifications. It should say "✓ Connected".
+   On the phone, go to ⚙ Settings › Galaxy Watch › **Test buzz on the watch**.
+
+You can turn ADB/Wireless debugging off again afterwards. Updates install the same way.
 
 ## Build locally
 
