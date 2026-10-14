@@ -24,12 +24,12 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease
-          cp app/build/outputs/apk/release/app-release.apk RelentlessAlarm.apk
+          cp app/build/outputs/apk/release/app-release.apk WakeUpHolmes.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: RelentlessAlarm
-          path: RelentlessAlarm.apk
+          name: WakeUpHolmes
+          path: WakeUpHolmes.apk
 
       - name: Publish as the "latest" release
         env:
@@ -37,8 +37,8 @@ jobs:
         run: |
           gh release delete latest --yes --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
           sleep 3
-          gh release create latest RelentlessAlarm.apk \
+          gh release create latest WakeUpHolmes.apk \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Relentless Alarm (latest build)" \
-            --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Download RelentlessAlarm.apk on your phone and open it to install."
+            --title "Wake Up Holmes (latest build)" \
+            --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Download WakeUpHolmes.apk on your phone and open it to install."

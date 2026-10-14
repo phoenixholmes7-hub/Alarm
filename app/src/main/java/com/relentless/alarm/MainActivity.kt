@@ -42,7 +42,7 @@ class MainActivity : Activity() {
 
     private fun render() {
         content.removeAllViews()
-        content.addView(label("Relentless Alarm", 28f, bold = true), llp())
+        content.addView(label("Wake Up Holmes", 28f, bold = true), llp())
         val next = Scheduler.nextAlarm(this)
         content.addView(
             label(

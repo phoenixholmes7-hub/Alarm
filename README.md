@@ -1,4 +1,4 @@
-# Relentless Alarm
+# Wake Up Holmes
 
 An Android alarm for heavy sleepers, modelled on Alarmy ("Sleep If U Can").
 The only way to turn it off is to complete the alarm's missions.
@@ -22,7 +22,7 @@ The only way to turn it off is to complete the alarm's missions.
 
 ## Install
 
-Every push builds the app with GitHub Actions. Download `RelentlessAlarm.apk` from the
+Every push builds the app with GitHub Actions. Download `WakeUpHolmes.apk` from the
 [**latest release**](../../releases/tag/latest) on your phone and open it. You may need to allow
 "Install unknown apps" for your browser. Then open the app and fix everything in the checklist.
 
@@ -31,3 +31,13 @@ Every push builds the app with GitHub Actions. Download `RelentlessAlarm.apk` fr
 ```
 ./gradlew assembleRelease   # needs the Android SDK
 ```
+
+## Screens (mockups)
+
+These are drawn from the app's layout code, not captured from a phone.
+
+| Home | Edit alarm | Ringing |
+|---|---|---|
+| ![](docs/mockups/1-home.png) | ![](docs/mockups/2-edit-alarm.png) | ![](docs/mockups/3-ringing.png) |
+| **Math mission** | **Memory mission** | **Wake-up check** |
+| ![](docs/mockups/4-math-mission.png) | ![](docs/mockups/5-memory-mission.png) | ![](docs/mockups/6-wake-up-check.png) |

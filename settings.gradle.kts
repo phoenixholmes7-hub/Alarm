@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "RelentlessAlarm"
+rootProject.name = "WakeUpHolmes"
 include(":app")
