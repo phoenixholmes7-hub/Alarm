@@ -88,7 +88,8 @@ class SettingsActivity : Activity() {
         }
 
         section("Make sure it works")
-        content.addView(button("Ring a test alarm in 10 seconds", Colors.CARD_HI, 16f) { testAlarm() }, llp(top = 8))
+        content.addView(button("🔇  Silent test: try the missions now", Colors.CARD_HI, 16f) { silentTest() }, llp(top = 8))
+        content.addView(button("🔊  Ring a test alarm in 10 seconds", Colors.CARD_HI, 16f) { testAlarm() }, llp(top = 8))
         val checks = Setup.checks(this)
         val rows = checks.map { c ->
             row(c.title, if (c.ok) "✓" else "Fix ›", if (c.ok) Colors.OK else Colors.WARN) { if (!c.ok) c.fix(this) }
@@ -149,6 +150,17 @@ class SettingsActivity : Activity() {
             .setTitle(title)
             .setItems(items.toTypedArray()) { _, which -> onPick(which) }
             .show()
+    }
+
+    /** Full alarm screen + your first alarm's missions, but no sound, vibration, flashlight or watch. */
+    private fun silentTest() {
+        val template = store.alarms().firstOrNull()?.deepCopy() ?: Alarm(id = Store.PREVIEW_ID)
+        store.preview = template.apply {
+            id = Store.PREVIEW_ID
+            label = "Silent test"
+        }
+        store.snoozesUsed = 0
+        AlarmService.start(this, Store.PREVIEW_ID, Scheduler.MODE_ALARM, silent = true)
     }
 
     private fun testAlarm() {

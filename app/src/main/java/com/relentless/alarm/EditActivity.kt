@@ -134,7 +134,11 @@ class EditActivity : Activity() {
         content.addView(checkRow, llp(top = 8))
 
         // Actions
-        content.addView(button("Preview (rings now)", Colors.CARD_HI) { preview() }, llp(top = 28))
+        val previews = horizontal()
+        previews.addView(button("🔇  Silent test", Colors.CARD_HI, 15f) { preview(silent = true) }, llp(0, WRAP, 1f).apply { rightMargin = dp(6) })
+        previews.addView(button("🔊  Preview", Colors.CARD_HI, 15f) { preview(silent = false) }, llp(0, WRAP, 1f).apply { leftMargin = dp(6) })
+        content.addView(previews, llp(top = 28))
+        content.addView(label("Silent test lets you try the missions with no sound.", 12f, Colors.DIM, center = true), llp(top = 6))
         content.addView(button("Save", Colors.ACCENT, 20f) { save() }, llp(top = 12))
         if (!isNew) {
             content.addView(button("Delete alarm", Colors.CARD) { confirmDelete() }, llp(top = 12))
@@ -282,10 +286,10 @@ class EditActivity : Activity() {
         pendingBarcode = null
     }
 
-    private fun preview() {
+    private fun preview(silent: Boolean) {
         store.preview = alarm.deepCopy().apply { id = Store.PREVIEW_ID }
         store.snoozesUsed = 0
-        AlarmService.start(this, Store.PREVIEW_ID, Scheduler.MODE_ALARM)
+        AlarmService.start(this, Store.PREVIEW_ID, Scheduler.MODE_ALARM, silent)
     }
 
     private fun save() {

@@ -129,6 +129,7 @@ class AlarmActivity : Activity() {
         body.removeAllViews()
         body.gravity = Gravity.CENTER
 
+        addSilentBanner()
         val brand = horizontal().apply { gravity = Gravity.CENTER }
         brand.addView(logo(30))
         brand.addView(wordmark(18f), llp(WRAP, WRAP).apply { leftMargin = dp(10) })
@@ -171,6 +172,14 @@ class AlarmActivity : Activity() {
         updateClock()
     }
 
+    private fun addSilentBanner() {
+        if (!AlarmService.isSilent) return
+        body.addView(label("🔇  Silent test: no sound", 14f, Colors.WARN, bold = true, center = true).apply {
+            background = rounded(0xFF2A2210.toInt(), 12)
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+        }, llp(WRAP, WRAP).apply { bottomMargin = dp(12) })
+    }
+
     private fun startMissions() {
         if (missions.isEmpty()) {
             done()
@@ -209,6 +218,7 @@ class AlarmActivity : Activity() {
         body.removeAllViews()
         body.gravity = Gravity.CENTER_HORIZONTAL
         val m = missions[missionIndex]
+        addSilentBanner()
         body.addView(
             label("Mission ${missionIndex + 1} of ${missions.size}  ·  ${MissionType.icon(m.type)} ${MissionType.name(m.type)}", 16f, Colors.SUB, center = true),
             llp(top = 8)

@@ -113,6 +113,10 @@ class AlarmService : Service() {
             private set
         /** Set by the alarm screen while a mission is in progress. */
         @Volatile var missionActive = false
+        /** Silent test: the full alarm screen and missions, but no sound, vibration, flashlight or watch. */
+        @Volatile var isSilent = false
+            private set
+        const val EXTRA_SILENT = "silent"
         /** Sound stays quiet until this time (elapsedRealtime) while a mission is active. */
         @Volatile private var quietUntil = 0L
         @Volatile private var instance: AlarmService? = null
@@ -125,11 +129,12 @@ class AlarmService : Service() {
             quietUntil = maxOf(quietUntil, SystemClock.elapsedRealtime() + graceMs)
         }
 
-        fun start(ctx: Context, alarmId: Int, mode: String) {
+        fun start(ctx: Context, alarmId: Int, mode: String, silent: Boolean = false) {
             val i = Intent(ctx, AlarmService::class.java)
                 .setAction(ACTION_START)
                 .putExtra(Scheduler.EXTRA_ALARM_ID, alarmId)
                 .putExtra(Scheduler.EXTRA_MODE, mode)
+                .putExtra(EXTRA_SILENT, silent)
             ctx.startForegroundService(i)
         }
 
@@ -202,7 +207,7 @@ class AlarmService : Service() {
                     // Already ringing for real; don't downgrade to a wake-up check.
                     startForegroundCompat(buildNotification())
                 } else {
-                    startRinging(id, mode)
+                    startRinging(id, mode, intent.getBooleanExtra(EXTRA_SILENT, false))
                 }
             }
             ACTION_DISMISS -> dismiss()
@@ -211,14 +216,16 @@ class AlarmService : Service() {
         return START_STICKY
     }
 
-    private fun startRinging(id: Int, mode: String) {
+    private fun startRinging(id: Int, mode: String, silent: Boolean = false) {
         isRinging = true
+        isSilent = silent
         currentAlarmId = id
         currentMode = mode
         missionActive = false
         quietUntil = 0L
         ringStartedAt = System.currentTimeMillis()
-        store.setRinging(id, mode)
+        // A silent test isn't persisted, so it can never come back as a loud alarm after a restart.
+        if (!silent) store.setRinging(id, mode)
 
         ensureChannel(this)
         startForegroundCompat(buildNotification())
@@ -226,17 +233,19 @@ class AlarmService : Service() {
 
         handler.removeCallbacksAndMessages(null)
         stopOutputs()
-        forceStreamVolume()
-        startSound()
-        startVibration()
-        if (mode == Scheduler.MODE_ALARM && store.flashlight) startStrobe()
-        if (mode == Scheduler.MODE_CHECK) {
-            handler.postDelayed({ startRinging(id, Scheduler.MODE_ALARM) }, store.checkWindowSec * 1000L)
+        if (!silent) {
+            forceStreamVolume()
+            startSound()
+            startVibration()
+            if (mode == Scheduler.MODE_ALARM && store.flashlight) startStrobe()
+            if (mode == Scheduler.MODE_CHECK) {
+                handler.postDelayed({ startRinging(id, Scheduler.MODE_ALARM) }, store.checkWindowSec * 1000L)
+            }
         }
         tick = 0
         handler.post(ticker)
         launchActivity()
-        WatchBridge.send(this, WatchBridge.RING, watchPayload())
+        if (!silent) WatchBridge.send(this, WatchBridge.RING, watchPayload())
     }
 
     private fun watchPayload(): String {
@@ -252,6 +261,10 @@ class AlarmService : Service() {
         override fun run() {
             if (!isRinging) return
             tick++
+            if (isSilent) {
+                handler.postDelayed(this, 1000)
+                return
+            }
             forceStreamVolume()
             applyVolume()
             if (currentMode == Scheduler.MODE_ALARM && !escalated &&
@@ -482,6 +495,10 @@ class AlarmService : Service() {
         val id = currentAlarmId
         val a = store.alarm(id)
         if (store.snoozesUsed >= (a?.maxSnoozes ?: 0)) return
+        if (isSilent) {
+            stopRinging {}
+            return
+        }
         store.snoozesUsed = store.snoozesUsed + 1
         stopRinging {
             Scheduler.scheduleExtra(
@@ -497,7 +514,10 @@ class AlarmService : Service() {
         missionActive = false
         handler.removeCallbacksAndMessages(null)
         stopOutputs()
-        if (was) {
+        if (was && isSilent) {
+            // Silent test: leave any real pending snooze / wake-up check alone.
+            isSilent = false
+        } else if (was) {
             WatchBridge.send(this, WatchBridge.STOP)
             store.clearRinging()
             Scheduler.cancelExtra(this)
