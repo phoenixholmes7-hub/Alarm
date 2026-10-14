@@ -36,8 +36,8 @@ Every push builds the app with GitHub Actions. Download `WakeUpHolmes.apk` from 
 
 These are drawn from the app's layout code, not captured from a phone.
 
-| Home | Edit alarm | Ringing |
+| Startup | Home | Ringing |
 |---|---|---|
-| ![](docs/mockups/1-home.png) | ![](docs/mockups/2-edit-alarm.png) | ![](docs/mockups/3-ringing.png) |
-| **Math mission** | **Memory mission** | **Wake-up check** |
-| ![](docs/mockups/4-math-mission.png) | ![](docs/mockups/5-memory-mission.png) | ![](docs/mockups/6-wake-up-check.png) |
+| ![](docs/mockups/1-splash.png) | ![](docs/mockups/2-home.png) | ![](docs/mockups/3-ringing.png) |
+| **Find the item** | **Register an item** | **App icon** |
+| ![](docs/mockups/4-find-the-item.png) | ![](docs/mockups/5-register-item.png) | ![](docs/mockups/6-app-icon.png) |
