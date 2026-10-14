@@ -27,7 +27,6 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import com.journeyapps.barcodescanner.DecoratedBarcodeView
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -79,7 +78,7 @@ class AlarmActivity : Activity() {
 
     private var sensorListener: SensorEventListener? = null
     private var sensorType = 0
-    private var scanner: DecoratedBarcodeView? = null
+    private var scanner: ItemScanner? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -130,15 +129,22 @@ class AlarmActivity : Activity() {
         body.removeAllViews()
         body.gravity = Gravity.CENTER
 
-        clockView = label("", 76f, center = true).apply { typeface = Typeface.create("sans-serif-light", Typeface.NORMAL) }
+        val brand = horizontal().apply { gravity = Gravity.CENTER }
+        brand.addView(logo(30))
+        brand.addView(wordmark(18f), llp(WRAP, WRAP).apply { leftMargin = dp(10) })
+        body.addView(brand, llp(top = 0))
+        body.addView(spacer(28))
+        clockView = label("", 80f, center = true).apply { typeface = Typeface.create("sans-serif-thin", Typeface.NORMAL) }
         body.addView(clockView, llp())
         body.addView(label(SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(Date()), 18f, Colors.SUB, center = true), llp())
         val a = alarm
-        if (!a?.label.isNullOrBlank()) body.addView(label(a!!.label, 22f, bold = true, center = true), llp(top = 12))
+        if (!a?.label.isNullOrBlank()) {
+            body.addView(label(a!!.label, 24f, center = true).apply { typeface = holmesFont() }, llp(top = 12))
+        }
         body.addView(spacer(40))
 
         if (mode == Scheduler.MODE_CHECK) {
-            body.addView(label("Wake-up check", 30f, bold = true, center = true), llp())
+            body.addView(label("Wake-up check", 32f, center = true).apply { typeface = holmesFont() }, llp())
             body.addView(label("Are you really awake? Confirm before time runs out or the full alarm starts again.", 17f, Colors.SUB, center = true), llp(top = 8))
             countdownView = label("", 44f, Colors.WARN, bold = true, center = true)
             body.addView(countdownView, llp(top = 16))
@@ -509,44 +515,58 @@ class AlarmActivity : Activity() {
 
     private fun barcodeMission(m: Mission) {
         if (m.code.isEmpty()) {
-            replaceWithMath("No barcode registered — doing hard math instead")
+            replaceWithMath("No item registered, so it's hard math instead")
             return
         }
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            replaceWithMath("Camera permission missing — doing hard math instead")
+            replaceWithMath("Camera permission is off, so it's hard math instead")
             return
         }
-        body.addView(label("Go and scan:", 18f, Colors.SUB, center = true), llp(top = 8))
-        body.addView(label(m.note.ifBlank { "your registered barcode" }, 26f, bold = true, center = true), llp(top = 4))
-        val view = DecoratedBarcodeView(this)
-        view.setStatusText("")
-        var lastWrong = 0L
-        view.decodeContinuous { result ->
-            AlarmService.userActive()
-            if (result.text == m.code) {
-                view.pause()
-                scanner = null
-                nextMission()
-            } else if (System.currentTimeMillis() - lastWrong > 2500) {
-                lastWrong = System.currentTimeMillis()
-                Toast.makeText(this, "That's not the right barcode", Toast.LENGTH_SHORT).show()
+        // Walking to the item takes a while: keep the alarm quiet for a minute to get there.
+        AlarmService.userActive(60_000L)
+        val item = m.note.ifBlank { "your item" }
+        body.addView(label("Go find your", 17f, Colors.SUB, center = true), llp(top = 14))
+        body.addView(label(item, 34f, Colors.ACCENT, center = true).apply { typeface = holmesFont() }, llp(top = 2))
+
+        val status = label("Point the camera at its barcode", 15f, Colors.SUB, center = true)
+        var cameraFailed = false
+        val view = ItemScanner(this)
+        view.onActivity = { AlarmService.userActive(20_000L) }
+        view.onScan = { code ->
+            AlarmService.userActive(20_000L)
+            if (normalizeCode(code) == normalizeCode(m.code)) {
+                view.feedback(true)
+                view.onScan = null
+                status.text = "✓ Found it. Good morning, Holmes!"
+                status.setTextColor(Colors.OK)
+                missionHandler.postDelayed({ nextMission() }, 900)
+            } else {
+                view.feedback(false)
+                status.text = "That's not your $item. Keep looking."
+                status.setTextColor(Colors.ACCENT)
             }
         }
-        body.addView(view, llp(MATCH, dp(340), top = 16))
+        view.onError = {
+            cameraFailed = true
+            status.text = "The camera isn't available. Use the math option below."
+            status.setTextColor(Colors.WARN)
+        }
+        body.addView(view, llp(MATCH, 0, 1f, top = 14))
+        body.addView(status, llp(top = 12))
         scanner = view
         view.resume()
 
-        val fallback = button("", Colors.CARD_HI, 15f) {
-            if (System.currentTimeMillis() - AlarmService.ringStartedAt >= BARCODE_FALLBACK_AFTER_MS) {
-                replaceWithMath("OK — 8 hard math problems instead")
+        val fallback = button("", Colors.CARD_HI, 14f) {
+            if (cameraFailed || System.currentTimeMillis() - AlarmService.ringStartedAt >= BARCODE_FALLBACK_AFTER_MS) {
+                replaceWithMath("OK, 8 hard math problems instead")
             }
         }
-        body.addView(fallback, llp(top = 16))
+        body.addView(fallback, llp(top = 10))
         val updater = object : Runnable {
             override fun run() {
                 val left = BARCODE_FALLBACK_AFTER_MS - (System.currentTimeMillis() - AlarmService.ringStartedAt)
-                fallback.text = if (left <= 0) "Can't find it? Do hard math instead"
-                else "Can't find it? Math fallback unlocks in ${(left + 999) / 1000}s"
+                fallback.text = if (cameraFailed || left <= 0) "Can't find it? Do hard math instead"
+                else "Can't find it? The math option unlocks in ${(left + 999) / 1000 / 60}:${"%02d".format(((left + 999) / 1000) % 60)}"
                 missionHandler.postDelayed(this, 1000)
             }
         }
@@ -574,10 +594,8 @@ class AlarmActivity : Activity() {
     }
 
     private fun updateClock() {
-        clockView?.text = fmtTime(
-            java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY),
-            java.util.Calendar.getInstance().get(java.util.Calendar.MINUTE)
-        )
+        val now = java.util.Calendar.getInstance()
+        clockView?.text = bigTime(now.get(java.util.Calendar.HOUR_OF_DAY), now.get(java.util.Calendar.MINUTE))
         countdownView?.let {
             val left = store.checkWindowSec - (System.currentTimeMillis() - AlarmService.ringStartedAt) / 1000
             it.text = "${left.coerceAtLeast(0)}s"

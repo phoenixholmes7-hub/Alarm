@@ -22,7 +22,7 @@ object MissionType {
         TYPING -> "Typing"
         SHAKE -> "Shake"
         STEPS -> "Steps"
-        BARCODE -> "Barcode / QR"
+        BARCODE -> "Find the item"
         else -> t
     }
 
@@ -32,7 +32,7 @@ object MissionType {
         TYPING -> "⌨️"
         SHAKE -> "📳"
         STEPS -> "🚶"
-        BARCODE -> "📷"
+        BARCODE -> "🔍"
         else -> "⏰"
     }
 
@@ -42,7 +42,7 @@ object MissionType {
         TYPING -> "Type motivational phrases exactly"
         SHAKE -> "Shake the phone hard"
         STEPS -> "Get up and walk"
-        BARCODE -> "Scan a barcode in another room (e.g. toothpaste)"
+        BARCODE -> "Get up and scan an item in another room"
         else -> ""
     }
 
@@ -105,7 +105,7 @@ data class Mission(
 ) {
     fun describe(): String = when (type) {
         MissionType.BARCODE ->
-            if (code.isEmpty()) "Barcode (not registered!)" else "Scan: ${note.ifBlank { "registered barcode" }}"
+            if (code.isEmpty()) "Find the item (no item registered!)" else "Find: ${note.ifBlank { "your item" }}"
         else -> buildString {
             append("${MissionType.name(type)} · $count ${MissionType.unit(type)}")
             if (MissionType.hasLevel(type)) append(" · ${MissionType.LEVEL_SHORT[level.coerceIn(0, 4)]}")

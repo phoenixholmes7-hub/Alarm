@@ -49,11 +49,12 @@ class EditActivity : Activity() {
         val scroll = ScrollView(this).apply { addView(content) }
         setContentView(scroll)
 
-        content.addView(label(if (isNew) "New alarm" else "Edit alarm", 22f, bold = true), llp())
+        content.addView(titleBar(if (isNew) "New alarm" else "Edit alarm"), llp())
 
         // Time
         timeView = label("", 64f, Colors.TEXT, center = true).apply {
-            background = rounded(Colors.CARD)
+            typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+            background = pressable(Colors.CARD)
             setPadding(0, dp(16), 0, dp(16))
             setOnClickListener { pickTime() }
         }
@@ -166,7 +167,7 @@ class EditActivity : Activity() {
     }
 
     private fun refreshTime() {
-        timeView.text = fmtTime(alarm.hour, alarm.minute)
+        timeView.text = bigTime(alarm.hour, alarm.minute)
     }
 
     private fun refreshDays() {
@@ -192,7 +193,7 @@ class EditActivity : Activity() {
         }
         alarm.missions.forEachIndexed { i, m ->
             val row = horizontal().apply {
-                background = rounded(Colors.CARD)
+                background = pressable(Colors.CARD)
                 setPadding(dp(16), dp(12), dp(8), dp(12))
                 setOnClickListener { configure(m, isNew = false) }
             }
@@ -222,10 +223,21 @@ class EditActivity : Activity() {
     private fun configure(m: Mission, isNew: Boolean) {
         when (m.type) {
             MissionType.BARCODE -> {
-                pendingBarcode = m
-                pendingIsNew = isNew
-                @Suppress("DEPRECATION")
-                startActivityForResult(Intent(this, ScanActivity::class.java), REQ_SCAN)
+                if (isNew || m.code.isEmpty()) {
+                    registerItem(m, isNew)
+                } else {
+                    choose(m.note.ifBlank { "Your item" }, listOf("Test scan it now", "Register a different item")) {
+                        if (it == 0) {
+                            startActivity(
+                                Intent(this, ScanActivity::class.java)
+                                    .putExtra(ScanActivity.EXTRA_EXPECT, m.code)
+                                    .putExtra(ScanActivity.EXTRA_NOTE, m.note)
+                            )
+                        } else {
+                            registerItem(m, false)
+                        }
+                    }
+                }
             }
             else -> {
                 if (m.type == MissionType.STEPS && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
@@ -249,6 +261,13 @@ class EditActivity : Activity() {
         }
     }
 
+    private fun registerItem(m: Mission, isNew: Boolean) {
+        pendingBarcode = m
+        pendingIsNew = isNew
+        @Suppress("DEPRECATION")
+        startActivityForResult(Intent(this, ScanActivity::class.java), REQ_SCAN)
+    }
+
     private var pendingBarcode: Mission? = null
     private var pendingIsNew = false
 
@@ -266,21 +285,9 @@ class EditActivity : Activity() {
         val code = data?.getStringExtra("code")
         if (resultCode != RESULT_OK || code.isNullOrEmpty()) return
         m.code = code
-        val nameEdit = EditText(this).apply {
-            hint = "e.g. Toothpaste in the bathroom"
-            setText(m.note)
-        }
-        val wrap = vertical(20).apply { addView(nameEdit) }
-        AlertDialog.Builder(this)
-            .setTitle("Barcode registered ✓")
-            .setMessage("Name it so you know where to go in the morning:")
-            .setView(wrap)
-            .setPositiveButton("Save") { _, _ ->
-                m.note = nameEdit.text.toString().trim()
-                commitMission(m, pendingIsNew)
-            }
-            .setCancelable(false)
-            .show()
+        m.note = data?.getStringExtra("note").orEmpty()
+        commitMission(m, pendingIsNew)
+        pendingBarcode = null
     }
 
     private fun preview() {

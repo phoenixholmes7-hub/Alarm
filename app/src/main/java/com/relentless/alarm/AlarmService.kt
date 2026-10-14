@@ -113,12 +113,16 @@ class AlarmService : Service() {
             private set
         /** Set by the alarm screen while a mission is in progress. */
         @Volatile var missionActive = false
-        @Volatile private var lastUserActivity = 0L
+        /** Sound stays quiet until this time (elapsedRealtime) while a mission is active. */
+        @Volatile private var quietUntil = 0L
         @Volatile private var instance: AlarmService? = null
 
-        /** Called on every touch during a mission: keeps the sound quiet while you're working on it. */
-        fun userActive() {
-            lastUserActivity = SystemClock.elapsedRealtime()
+        /**
+         * Called whenever the user is working on a mission: keeps the sound quiet for [graceMs].
+         * Stop working and it comes back at full volume.
+         */
+        fun userActive(graceMs: Long = 12_000L) {
+            quietUntil = maxOf(quietUntil, SystemClock.elapsedRealtime() + graceMs)
         }
 
         fun start(ctx: Context, alarmId: Int, mode: String) {
@@ -212,6 +216,7 @@ class AlarmService : Service() {
         currentAlarmId = id
         currentMode = mode
         missionActive = false
+        quietUntil = 0L
         ringStartedAt = System.currentTimeMillis()
         store.setRinging(id, mode)
 
@@ -257,7 +262,7 @@ class AlarmService : Service() {
 
     private fun targetVolume(): Float = when {
         currentMode == Scheduler.MODE_CHECK -> 0.4f
-        missionActive && SystemClock.elapsedRealtime() - lastUserActivity < 12_000 -> 0.12f
+        missionActive && SystemClock.elapsedRealtime() < quietUntil -> 0.12f
         else -> 1f
     }
 

@@ -2,7 +2,16 @@ package com.relentless.alarm
 
 import android.content.Context
 import android.graphics.Typeface
+import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
+import android.text.TextPaint
+import android.text.style.MetricAffectingSpan
+import android.widget.ImageView
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -12,14 +21,17 @@ import java.util.Calendar
 import kotlin.math.ceil
 
 object Colors {
-    const val BG = 0xFF101114.toInt()
-    const val CARD = 0xFF1E2027.toInt()
-    const val CARD_HI = 0xFF2A2D36.toInt()
-    const val ACCENT = 0xFFFF4D4D.toInt()
+    const val BG = 0xFF0E0F13.toInt()
+    const val CARD = 0xFF181A20.toInt()
+    const val CARD_HI = 0xFF23262E.toInt()
+    const val LINE = 0xFF2C2F38.toInt()
+    const val ACCENT = 0xFFFF6B4A.toInt()
+    const val NAVY = 0xFF2A3170.toInt()
     const val TEXT = 0xFFFFFFFF.toInt()
-    const val SUB = 0xFF9AA0AA.toInt()
-    const val OK = 0xFF3DDC84.toInt()
-    const val WARN = 0xFFFFB020.toInt()
+    const val SUB = 0xFF8B919C.toInt()
+    const val DIM = 0xFF3A3D46.toInt()
+    const val OK = 0xFF34D399.toInt()
+    const val WARN = 0xFFFBBF24.toInt()
     const val FLASH = 0xFF8B0000.toInt()
 }
 
@@ -60,7 +72,7 @@ fun Context.button(s: String, color: Int = Colors.ACCENT, size: Float = 17f, onC
         isAllCaps = false
         textSize = size
         setTextColor(Colors.TEXT)
-        background = rounded(color, 14)
+        background = RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), rounded(color, 14), null)
         stateListAnimator = null
         setPadding(dp(16), dp(14), dp(16), dp(14))
         setOnClickListener { onClick() }
@@ -98,4 +110,64 @@ fun untilText(ms: Long): String {
         if (h > 0 || d > 0) append("${h}h ")
         append("${m}m")
     }
+}
+
+/** Card-style background that ripples when tapped. */
+fun Context.pressable(color: Int = Colors.CARD, radiusDp: Int = 16) =
+    RippleDrawable(ColorStateList.valueOf(0x22FFFFFF), rounded(color, radiusDp), null)
+
+fun Context.holmesFont(): Typeface = resources.getFont(R.font.holmes)
+
+fun Context.holmesLightFont(): Typeface = resources.getFont(R.font.holmes_light)
+
+/** "Wake Up Holmes" — plain "Wake Up", then "Holmes" in the Victorian serif, in the accent colour. */
+fun Context.wordmark(size: Float = 26f): TextView {
+    val sb = SpannableStringBuilder("Wake Up ")
+    val start = sb.length
+    sb.append("Holmes")
+    sb.setSpan(FontSpan(holmesFont()), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    sb.setSpan(ForegroundColorSpan(Colors.ACCENT), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    sb.setSpan(RelativeSizeSpan(1.18f), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    return label(sb, size, bold = true)
+}
+
+fun Context.logo(sizeDp: Int) = ImageView(this).apply {
+    setImageResource(R.drawable.ic_logo)
+    layoutParams = LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp))
+}
+
+/** "7:00 AM" with a smaller "AM". */
+fun Context.bigTime(hour: Int, minute: Int): CharSequence {
+    val t = fmtTime(hour, minute)
+    val sp = t.indexOf(' ')
+    if (sp < 0) return t
+    return SpannableStringBuilder(t).apply {
+        setSpan(RelativeSizeSpan(0.42f), sp, t.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+}
+
+/** Header with a back arrow and a title, for secondary screens. */
+fun android.app.Activity.titleBar(title: String): LinearLayout = horizontal().apply {
+    addView(label("‹", 34f, Colors.TEXT).apply {
+        setPadding(0, 0, dp(16), dp(4))
+        setOnClickListener { finish() }
+    })
+    addView(label(title, 22f, bold = true), llp(0, WRAP, 1f))
+}
+
+/** Applies a Typeface to a span of text (TypefaceSpan(Typeface) needs Android 9+). */
+class FontSpan(private val face: Typeface) : MetricAffectingSpan() {
+    override fun updateDrawState(tp: TextPaint) {
+        tp.typeface = face
+    }
+
+    override fun updateMeasureState(tp: TextPaint) {
+        tp.typeface = face
+    }
+}
+
+fun Context.pill(s: String, selected: Boolean = false, onClick: () -> Unit) = label(s, 14f, if (selected) Colors.TEXT else Colors.SUB).apply {
+    background = pressable(if (selected) Colors.ACCENT else Colors.CARD_HI, 20)
+    setPadding(dp(14), dp(8), dp(14), dp(8))
+    setOnClickListener { onClick() }
 }
