@@ -85,6 +85,19 @@ class WatchHomeActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        // Pull the latest "next alarm" from the phone in case the tile missed an update.
+        try {
+            Wearable.getDataClient(this).getDataItems(android.net.Uri.parse("wear://*/holmes/next"))
+                .addOnSuccessListener { items ->
+                    for (item in items) {
+                        val map = com.google.android.gms.wearable.DataMapItem.fromDataItem(item).dataMap
+                        NextAlarm.save(this, map.getLong("time"), map.getString("label").orEmpty(), map.getString("missions").orEmpty())
+                    }
+                    items.release()
+                    HolmesTileService.refresh(this)
+                }
+        } catch (_: Exception) {
+        }
         try {
             Wearable.getNodeClient(this).connectedNodes
                 .addOnSuccessListener { nodes ->

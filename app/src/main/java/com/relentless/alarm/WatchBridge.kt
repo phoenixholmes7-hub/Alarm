@@ -2,6 +2,7 @@ package com.relentless.alarm
 
 import android.content.Context
 import android.util.Log
+import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 
 /**
@@ -24,6 +25,25 @@ object WatchBridge {
         } catch (e: Exception) {
             // No Play services (or not unlocked yet after a reboot): the phone still rings.
             Log.w("WatchBridge", "send $path failed", e)
+        }
+    }
+
+    /** Publishes the next alarm to the watch tile (Data Layer: synced whenever the watch connects). */
+    fun syncNextAlarm(ctx: Context) {
+        try {
+            val app = ctx.applicationContext
+            val next = Scheduler.nextAlarm(app)
+            val req = PutDataMapRequest.create("/holmes/next").apply {
+                dataMap.putLong("time", next?.second ?: 0L)
+                dataMap.putString("label", next?.first?.label.orEmpty())
+                dataMap.putString(
+                    "missions",
+                    next?.first?.missions?.joinToString(" ") { MissionType.icon(it.type) }.orEmpty()
+                )
+            }
+            Wearable.getDataClient(app).putDataItem(req.asPutDataRequest().setUrgent())
+        } catch (e: Exception) {
+            Log.w("WatchBridge", "sync failed", e)
         }
     }
 

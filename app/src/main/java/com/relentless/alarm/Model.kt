@@ -276,6 +276,28 @@ class Store(ctx: Context) {
         get() = p.getInt("checkWindowSec", 90)
         set(v) = edit { putInt("checkWindowSec", v) }
 
+    /** Copy alarms set in Google Clock (e.g. by Gemini) into Wake Up Holmes. */
+    var followClock: Boolean
+        get() = p.getBoolean("followClock", false)
+        set(v) = edit { putBoolean("followClock", v) }
+
+    /** Missions etc. for alarms created by voice / other apps: copied from your first alarm. */
+    fun newAlarmLike(hour: Int, minute: Int, days: Int, label: String): Alarm {
+        val t = alarms().firstOrNull()
+        return Alarm(
+            id = newId(),
+            hour = hour,
+            minute = minute,
+            days = days,
+            enabled = true,
+            label = label,
+            missions = t?.missions?.map { it.copy() }?.toMutableList() ?: mutableListOf(Mission(MissionType.MATH)),
+            maxSnoozes = t?.maxSnoozes ?: 1,
+            snoozeMin = t?.snoozeMin ?: 5,
+            wakeCheck = t?.wakeCheck ?: true,
+        )
+    }
+
     // ---- live ringing state ----
 
     var snoozesUsed: Int

@@ -51,12 +51,16 @@ object Scheduler {
         }
     }
 
-    fun schedule(ctx: Context, alarm: Alarm) {
+    fun schedule(ctx: Context, alarm: Alarm, syncWatch: Boolean = true) {
         val pi = firePi(ctx, alarm.id, MODE_ALARM, alarm.id, false)
         if (alarm.enabled) setClock(ctx, alarm.nextTrigger(), pi) else am(ctx).cancel(pi)
+        if (syncWatch) WatchBridge.syncNextAlarm(ctx)
     }
 
-    fun cancel(ctx: Context, id: Int) = am(ctx).cancel(firePi(ctx, id, MODE_ALARM, id, false))
+    fun cancel(ctx: Context, id: Int) {
+        am(ctx).cancel(firePi(ctx, id, MODE_ALARM, id, false))
+        WatchBridge.syncNextAlarm(ctx)
+    }
 
     fun scheduleExtra(ctx: Context, id: Int, mode: String, time: Long) {
         Store(ctx).setExtra(time, id, mode)
@@ -74,7 +78,8 @@ object Scheduler {
 
     fun rescheduleAll(ctx: Context) {
         val store = Store(ctx)
-        store.alarms().forEach { schedule(ctx, it) }
+        store.alarms().forEach { schedule(ctx, it, syncWatch = false) }
+        WatchBridge.syncNextAlarm(ctx)
         val now = System.currentTimeMillis()
         val t = store.extraTime
         if (t > 0) {
@@ -103,6 +108,7 @@ class AlarmReceiver : BroadcastReceiver() {
             if (alarm.days == 0) {
                 alarm.enabled = false
                 store.save(alarm)
+                WatchBridge.syncNextAlarm(context)
             } else {
                 Scheduler.schedule(context, alarm)
             }

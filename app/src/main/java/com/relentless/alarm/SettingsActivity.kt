@@ -59,6 +59,23 @@ class SettingsActivity : Activity() {
             },
         )
 
+        section("Gemini & voice")
+        group(
+            switchRow("Follow Gemini / Google Clock alarms", store.followClock) {
+                store.followClock = it
+                if (it) ClockFollowReceiver.check(this)
+            },
+        )
+        content.addView(
+            label(
+                "Say \"Hey Google, set an alarm for 7 AM\". If Gemini asks which app, pick Wake Up Holmes. " +
+                    "If it puts the alarm in Google Clock instead, this switch adds a matching Wake Up Holmes alarm " +
+                    "(alarms within the next 24 hours) using your first alarm's missions.",
+                13f, Colors.DIM
+            ),
+            llp(top = 6)
+        )
+
         section("Uninstall protection")
         val guarded = Guard.isOn(this)
         group(

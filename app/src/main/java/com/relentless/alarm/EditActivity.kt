@@ -307,6 +307,7 @@ class EditActivity : Activity() {
             .setPositiveButton("Delete") { _, _ ->
                 Scheduler.cancel(this, alarm.id)
                 store.delete(alarm.id)
+                WatchBridge.syncNextAlarm(this)
                 finish()
             }
             .setNegativeButton("Cancel", null)

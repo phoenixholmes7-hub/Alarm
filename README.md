@@ -29,7 +29,16 @@ Every push builds the app with GitHub Actions. Download `WakeUpHolmes.apk` from 
 [**latest release**](../../releases/tag/latest) on your phone and open it. You may need to allow
 "Install unknown apps" for your browser. Then open the app and fix everything in the checklist.
 
+## Gemini / voice
+
+- Say "Hey Google, set an alarm for 7 AM". Wake Up Holmes handles Android's standard *set alarm* request,
+  so if Gemini or another app sends it here (or asks you to pick an app), the alarm is created with your first alarm's missions.
+- Gemini usually puts alarms in Google Clock. Turn on **Settings › Gemini & voice › Follow Gemini / Google Clock alarms**
+  and Wake Up Holmes adds a matching alarm for any Google Clock alarm due within the next 24 hours.
+
 ## Galaxy Watch (Wear OS) app
+
+**Tile:** swipe through your watch tiles and add **Wake Up Holmes** to see your next alarm and countdown at a glance.
 
 When the phone alarm rings, the watch shows a full-screen alarm and buzzes hard until you finish
 the mission **on the phone**. There's no way to turn it off from the watch. It also stops by itself

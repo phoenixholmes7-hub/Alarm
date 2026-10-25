@@ -54,6 +54,23 @@
             android:exported="false"
             android:screenOrientation="portrait" />
 
+        <!-- "Hey Google / Gemini, set an alarm for 7 AM" and other apps that set alarms -->
+        <activity
+            android:name=".SetAlarmActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SET_ALARM" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SHOW_ALARMS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".AlarmActivity"
             android:directBootAware="true"
@@ -76,6 +93,14 @@
             android:name=".AlarmReceiver"
             android:directBootAware="true"
             android:exported="false" />
+
+        <receiver
+            android:name=".ClockFollowReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.app.action.NEXT_ALARM_CLOCK_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <receiver
             android:name=".GuardReceiver"

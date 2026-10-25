@@ -56,4 +56,8 @@ kotlin {
 
 dependencies {
     implementation("com.google.android.gms:play-services-wearable:18.2.0")
+    // Tile ("widget") showing the next alarm
+    implementation("androidx.wear.tiles:tiles:1.4.1")
+    implementation("androidx.wear.protolayout:protolayout:1.2.1")
+    implementation("androidx.concurrent:concurrent-futures:1.2.0")
 }

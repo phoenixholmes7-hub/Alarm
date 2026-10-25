@@ -9,6 +9,9 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.os.SystemClock
 import android.util.Log
+import com.google.android.gms.wearable.DataEvent
+import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import org.json.JSONObject
@@ -124,6 +127,15 @@ object WatchAlarm {
 }
 
 class WatchListenerService : WearableListenerService() {
+    override fun onDataChanged(events: DataEventBuffer) {
+        for (e in events) {
+            if (e.type != DataEvent.TYPE_CHANGED || e.dataItem.uri.path != "/holmes/next") continue
+            val map = DataMapItem.fromDataItem(e.dataItem).dataMap
+            NextAlarm.save(this, map.getLong("time"), map.getString("label").orEmpty(), map.getString("missions").orEmpty())
+        }
+        HolmesTileService.refresh(this)
+    }
+
     override fun onMessageReceived(event: MessageEvent) {
         val payload = String(event.data)
         when (event.path) {
