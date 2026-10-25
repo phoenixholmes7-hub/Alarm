@@ -81,6 +81,9 @@ class WatchAlarmActivity : Activity() {
     }
 
     fun refresh() {
+        // The phone re-sends every 20 s, so a changed "siren on watch" setting applies mid-alarm too.
+        if (WatchAlarm.sound && vibrator != null && !siren.isPlaying) siren.start(1f, Siren.BEEPER)
+        if (!WatchAlarm.sound) siren.stop()
         title.text = if (WatchAlarm.isTest) "Test buzz" else if (WatchAlarm.mode == "check") "Are you awake?" else "Wake up, Holmes!"
         val m = WatchAlarm.missions
         info.text = when {
@@ -99,8 +102,16 @@ class WatchAlarmActivity : Activity() {
             }
             clock.text = DateFormat.getTimeFormat(this@WatchAlarmActivity).format(Date())
             flash = !flash
-            root.setBackgroundColor(if (flash && !WatchAlarm.isTest) 0xFF8B0000.toInt() else 0xFF0E0F13.toInt())
-            handler.postDelayed(this, 600)
+            root.setBackgroundColor(
+                when {
+                    !flash -> 0xFF0E0F13.toInt()
+                    WatchAlarm.isTest -> 0xFF2A3170.toInt()
+                    else -> if (System.currentTimeMillis() / 300 % 3 == 0L) 0xFFFFFFFF.toInt() else 0xFFCC0000.toInt()
+                }
+            )
+            // Keep the watch's alarm volume pinned to max while ringing.
+            if (WatchAlarm.sound) forceVolume()
+            handler.postDelayed(this, 300)
         }
     }
 
@@ -113,10 +124,32 @@ class WatchAlarmActivity : Activity() {
         }
         vibrator = v
         try {
-            v?.vibrate(
-                VibrationEffect.createWaveform(longArrayOf(0, 1200, 300), 0),
-                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
-            )
+            // Machine-gun bursts then a long hard buzz, all at full strength.
+            val timings = longArrayOf(0, 160, 60, 160, 60, 160, 60, 900, 120)
+            val effect = if (v?.hasAmplitudeControl() == true) {
+                VibrationEffect.createWaveform(timings, intArrayOf(0, 255, 0, 255, 0, 255, 0, 255, 0), 1)
+            } else {
+                VibrationEffect.createWaveform(timings, 1)
+            }
+            v?.vibrate(effect, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
+        } catch (_: Exception) {
+        }
+        if (WatchAlarm.sound) {
+            forceVolume()
+            // Smoke-alarm pitch (~3 kHz) is what small watch speakers play loudest.
+            siren.start(1f, Siren.BEEPER)
+        }
+    }
+
+    private val siren = Siren()
+
+    private fun forceVolume() {
+        try {
+            val am = getSystemService(android.media.AudioManager::class.java)
+            val max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_ALARM)
+            if (am.getStreamVolume(android.media.AudioManager.STREAM_ALARM) < max) {
+                am.setStreamVolume(android.media.AudioManager.STREAM_ALARM, max, 0)
+            }
         } catch (_: Exception) {
         }
     }
@@ -137,6 +170,7 @@ class WatchAlarmActivity : Activity() {
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         vibrator?.cancel()
+        siren.stop()
         if (instance === this) instance = null
         super.onDestroy()
     }

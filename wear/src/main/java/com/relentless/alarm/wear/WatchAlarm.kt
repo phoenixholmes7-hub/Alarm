@@ -39,6 +39,9 @@ object WatchAlarm {
         private set
     @Volatile var mode = "alarm"
         private set
+    /** Play the siren through the watch speaker (phone setting "Siren on the watch too"). */
+    @Volatile var sound = true
+        private set
 
     val active: Boolean
         get() = lastRing > 0 &&
@@ -50,6 +53,7 @@ object WatchAlarm {
             label = o.optString("label", "Alarm")
             missions = o.optString("missions", "")
             mode = o.optString("mode", "alarm")
+            sound = o.optBoolean("sound", true)
         } catch (_: Exception) {
         }
         isTest = test

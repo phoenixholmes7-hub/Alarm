@@ -261,8 +261,13 @@ class Store(ctx: Context) {
         set(v) = edit { putString("sound", v) }
 
     var soundName: String
-        get() = p.getString("soundName", "Built-in siren") ?: "Built-in siren"
+        get() = p.getString("soundName", "Two-tone siren") ?: "Two-tone siren"
         set(v) = edit { putString("soundName", v) }
+
+    /** Watch plays a siren through its speaker as well as vibrating. */
+    var watchSound: Boolean
+        get() = p.getBoolean("watchSound", true)
+        set(v) = edit { putBoolean("watchSound", v) }
 
     var flashlight: Boolean
         get() = p.getBoolean("flashlight", true)
@@ -327,7 +332,14 @@ class Store(ctx: Context) {
     fun clearExtra() = edit { putLong("extraTime", 0L) }
 
     companion object {
+        /** Built-in sounds are stored as "siren" (two-tone) or "siren:<style>". Anything else is a ringtone URI. */
         const val SOUND_SIREN = "siren"
+
+        fun isBuiltIn(sound: String) = sound == SOUND_SIREN || sound.startsWith("$SOUND_SIREN:")
+
+        fun sirenStyle(sound: String) = sound.substringAfter(':', Siren.TWO_TONE).ifBlank { Siren.TWO_TONE }
+
+        fun builtInSound(style: String) = if (style == Siren.TWO_TONE) SOUND_SIREN else "$SOUND_SIREN:$style"
         const val PREVIEW_ID = 0
     }
 }

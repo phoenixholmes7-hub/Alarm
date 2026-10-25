@@ -34,66 +34,6 @@ private val ALARM_ATTRS: AudioAttributes = AudioAttributes.Builder()
     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
     .build()
 
-/** A harsh two-tone square-wave siren, generated in code so it always works (even before first unlock). */
-class Siren {
-    private var track: AudioTrack? = null
-
-    fun start(volume: Float): Boolean {
-        if (track != null) return true
-        return try {
-            val rate = 44100
-            val seg = rate / 5
-            val total = seg * 10
-            val data = ShortArray(total)
-            for (i in 0 until total) {
-                val f = if ((i / seg) % 2 == 0) 880.0 else 1320.0
-                val phase = (i * f / rate) % 1.0
-                data[i] = (if (phase < 0.5) 30000 else -30000).toShort()
-            }
-            val t = AudioTrack.Builder()
-                .setAudioAttributes(ALARM_ATTRS)
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setSampleRate(rate)
-                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                        .build()
-                )
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .setBufferSizeInBytes(total * 2)
-                .build()
-            t.write(data, 0, total)
-            t.setLoopPoints(0, total, -1)
-            t.setVolume(volume)
-            t.play()
-            track = t
-            true
-        } catch (e: Exception) {
-            Log.e("Siren", "failed", e)
-            stop()
-            false
-        }
-    }
-
-    fun setVolume(v: Float) {
-        try {
-            track?.setVolume(v)
-        } catch (_: Exception) {
-        }
-    }
-
-    fun stop() {
-        track?.let {
-            try {
-                it.stop()
-            } catch (_: Exception) {
-            }
-            it.release()
-        }
-        track = null
-    }
-}
-
 class AlarmService : Service() {
     companion object {
         const val ACTION_START = "com.relentless.alarm.action.START"
@@ -264,6 +204,7 @@ class AlarmService : Service() {
             .put("mode", currentMode)
             .put("label", a?.label?.ifBlank { null } ?: if (currentMode == Scheduler.MODE_CHECK) "Wake-up check" else "Alarm")
             .put("missions", a?.missions?.joinToString("  →  ") { "${MissionType.icon(it.type)} ${it.describe()}" } ?: "")
+            .put("sound", store.watchSound)
             .toString()
     }
 
@@ -278,11 +219,11 @@ class AlarmService : Service() {
             forceStreamVolume()
             applyVolume()
             if (currentMode == Scheduler.MODE_ALARM && !escalated &&
-                store.sound != Store.SOUND_SIREN && System.currentTimeMillis() - ringStartedAt > 45_000
+                !Store.isBuiltIn(store.sound) && System.currentTimeMillis() - ringStartedAt > 45_000
             ) {
                 // Still not up after 45s with a normal ringtone: add the siren on top.
                 escalated = true
-                siren.start(appliedVolume.coerceAtLeast(0.1f))
+                siren.start(appliedVolume.coerceAtLeast(0.1f), Siren.KLAXON)
             }
             if (tick % 4 == 0 && !AlarmActivity.visible) launchActivity()
             // Keep the watch buzzing (and catch a watch that reconnects mid-alarm).
@@ -327,7 +268,7 @@ class AlarmService : Service() {
 
     private fun startSound() {
         val s = store.sound
-        if (s != Store.SOUND_SIREN) {
+        if (!Store.isBuiltIn(s)) {
             val uris = listOfNotNull(
                 runCatching { Uri.parse(s) }.getOrNull(),
                 runCatching { RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM) }.getOrNull(),
@@ -337,7 +278,7 @@ class AlarmService : Service() {
                 return
             }
         }
-        if (siren.start(1f)) {
+        if (siren.start(1f, if (Store.isBuiltIn(s)) Store.sirenStyle(s) else Siren.KLAXON)) {
             applyVolume()
             return
         }
@@ -375,9 +316,19 @@ class AlarmService : Service() {
         }
         vibrator = v
         try {
-            v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 900, 400), 0), ALARM_ATTRS)
+            v.vibrate(violentVibration(v), ALARM_ATTRS)
         } catch (e: Exception) {
             Log.w("AlarmService", "vibrate", e)
+        }
+    }
+
+    /** Long full-strength pulses with tiny gaps (amplitude 255 where the motor supports it). */
+    private fun violentVibration(v: Vibrator): VibrationEffect {
+        val timings = longArrayOf(0, 700, 90, 700, 90, 1400, 150)
+        return if (v.hasAmplitudeControl()) {
+            VibrationEffect.createWaveform(timings, intArrayOf(0, 255, 0, 255, 0, 255, 0), 1)
+        } else {
+            VibrationEffect.createWaveform(timings, 1)
         }
     }
 

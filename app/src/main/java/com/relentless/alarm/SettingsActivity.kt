@@ -3,7 +3,12 @@ package com.relentless.alarm
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioManager
+import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.os.Handler
+import android.os.Looper
 import android.net.Uri
 import android.os.Bundle
 import android.widget.LinearLayout
@@ -38,7 +43,15 @@ class SettingsActivity : Activity() {
         section("Sound")
         group(
             row("Alarm sound", store.soundName) { pickSound() },
+            switchRow(if (testing) "🔊  Test sound (playing…)" else "🔊  Test sound", testing) { on ->
+                if (on) startTestSound() else stopTestSound()
+                render()
+            },
             switchRow("Flashlight strobe", store.flashlight) { store.flashlight = it },
+        )
+        content.addView(
+            label("Test sound plays at full alarm volume and stops after 30 seconds, or when you switch it off.", 13f, Colors.DIM),
+            llp(top = 6)
         )
 
         section("Wake-up check")
@@ -118,11 +131,13 @@ class SettingsActivity : Activity() {
         val testRow = row("Test buzz on the watch", "Send ›") {
             WatchBridge.send(
                 this, WatchBridge.TEST,
-                org.json.JSONObject().put("mode", "alarm").put("label", "Test").put("missions", "🔍 Find: your item").toString()
+                org.json.JSONObject().put("mode", "alarm").put("label", "Test").put("missions", "🔍 Find: your item")
+                    .put("sound", store.watchSound).toString()
             )
             Toast.makeText(this, "Sent. Your watch should buzz for a few seconds.", Toast.LENGTH_SHORT).show()
         }
-        group(watchRow, testRow)
+        val watchSirenRow = switchRow("Siren on the watch too", store.watchSound) { store.watchSound = it }
+        group(watchRow, watchSirenRow, testRow)
         content.addView(
             label("Install the Wake Up Holmes watch app (see the README) and open it once on the watch.", 13f, Colors.DIM),
             llp(top = 6)
@@ -224,10 +239,20 @@ class SettingsActivity : Activity() {
     }
 
     private fun pickSound() {
-        choose("Alarm sound", listOf("Built-in siren (harshest, recommended)", "Choose a sound from your phone…")) {
-            if (it == 0) {
-                store.sound = Store.SOUND_SIREN
-                store.soundName = "Built-in siren"
+        val current = store.sound
+        val styles = Siren.STYLES
+        val items = styles.map { st ->
+            val tick = if (Store.isBuiltIn(current) && Store.sirenStyle(current) == st) "✓  " else ""
+            "$tick${Siren.name(st)}: ${Siren.blurb(st)}"
+        } + listOf((if (!Store.isBuiltIn(current)) "✓  " else "") + "Choose a sound from your phone…")
+        choose("Alarm sound", items) {
+            if (it < styles.size) {
+                store.sound = Store.builtInSound(styles[it])
+                store.soundName = Siren.name(styles[it])
+                if (testing) {
+                    stopTestSound()
+                    startTestSound()
+                }
                 render()
             } else {
                 val i = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
@@ -241,6 +266,80 @@ class SettingsActivity : Activity() {
         }
     }
 
+    // ------------------------------------------------------------------ test sound
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val testSiren = Siren()
+    private var testPlayer: MediaPlayer? = null
+    private var savedAlarmVolume = -1
+    private var testing = false
+    private val autoStop = Runnable {
+        stopTestSound()
+        render()
+    }
+
+    /** Plays the chosen alarm sound at full alarm volume, exactly as it will sound in the morning. */
+    private fun startTestSound() {
+        val am = getSystemService(AudioManager::class.java)
+        try {
+            savedAlarmVolume = am.getStreamVolume(AudioManager.STREAM_ALARM)
+            am.setStreamVolume(AudioManager.STREAM_ALARM, am.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0)
+        } catch (_: Exception) {
+        }
+        val s = store.sound
+        val ok = if (Store.isBuiltIn(s)) testSiren.start(1f, Store.sirenStyle(s)) else startTestPlayer(Uri.parse(s))
+        if (!ok) testSiren.start(1f, Siren.KLAXON)
+        testing = true
+        handler.removeCallbacks(autoStop)
+        handler.postDelayed(autoStop, 30_000)
+    }
+
+    private fun startTestPlayer(uri: Uri): Boolean {
+        val mp = MediaPlayer()
+        return try {
+            mp.setAudioAttributes(
+                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
+            )
+            mp.setDataSource(this, uri)
+            mp.isLooping = true
+            mp.prepare()
+            mp.start()
+            testPlayer = mp
+            true
+        } catch (e: Exception) {
+            mp.release()
+            false
+        }
+    }
+
+    private fun stopTestSound() {
+        handler.removeCallbacks(autoStop)
+        testSiren.stop()
+        testPlayer?.let {
+            try {
+                it.stop()
+            } catch (_: Exception) {
+            }
+            it.release()
+        }
+        testPlayer = null
+        if (savedAlarmVolume >= 0) {
+            try {
+                getSystemService(AudioManager::class.java)
+                    .setStreamVolume(AudioManager.STREAM_ALARM, savedAlarmVolume, 0)
+            } catch (_: Exception) {
+            }
+            savedAlarmVolume = -1
+        }
+        testing = false
+    }
+
+    override fun onPause() {
+        if (testing) stopTestSound()
+        super.onPause()
+    }
+
     @Deprecated("Uses startActivityForResult")
     @Suppress("DEPRECATION")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -252,6 +351,10 @@ class SettingsActivity : Activity() {
             RingtoneManager.getRingtone(this, uri)?.getTitle(this) ?: "Custom sound"
         } catch (e: Exception) {
             "Custom sound"
+        }
+        if (testing) {
+            stopTestSound()
+            startTestSound()
         }
         render()
     }

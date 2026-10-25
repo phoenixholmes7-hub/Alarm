@@ -40,7 +40,9 @@ Every push builds the app with GitHub Actions. Download `WakeUpHolmes.apk` from 
 
 **Tile:** swipe through your watch tiles and add **Wake Up Holmes** to see your next alarm and countdown at a glance.
 
-When the phone alarm rings, the watch shows a full-screen alarm and buzzes hard until you finish
+When the phone alarm rings, the watch strobes red and white, vibrates in full-strength bursts, and plays a 3 kHz
+smoke-alarm siren through its speaker with its alarm volume pinned to max. You can turn the watch siren off in
+Settings › Galaxy Watch. It shows a full-screen alarm and buzzes hard until you finish
 the mission **on the phone**. There's no way to turn it off from the watch. It also stops by itself
 if it loses contact with the phone for 90 seconds.
 
