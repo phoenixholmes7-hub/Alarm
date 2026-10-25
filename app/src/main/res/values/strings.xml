@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Wake Up Holmes</string>
+    <string name="guard_description">Uninstall protection: stops Wake Up Holmes from being removed while you\'re half-asleep.</string>
 </resources>

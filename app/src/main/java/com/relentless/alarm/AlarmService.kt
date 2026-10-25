@@ -117,6 +117,10 @@ class AlarmService : Service() {
         @Volatile var isSilent = false
             private set
         const val EXTRA_SILENT = "silent"
+        const val EXTRA_GAUNTLET = "gauntlet"
+        /** Silent run whose completion turns off uninstall protection. */
+        @Volatile var isGauntlet = false
+            private set
         /** Sound stays quiet until this time (elapsedRealtime) while a mission is active. */
         @Volatile private var quietUntil = 0L
         @Volatile private var instance: AlarmService? = null
@@ -129,12 +133,13 @@ class AlarmService : Service() {
             quietUntil = maxOf(quietUntil, SystemClock.elapsedRealtime() + graceMs)
         }
 
-        fun start(ctx: Context, alarmId: Int, mode: String, silent: Boolean = false) {
+        fun start(ctx: Context, alarmId: Int, mode: String, silent: Boolean = false, gauntlet: Boolean = false) {
             val i = Intent(ctx, AlarmService::class.java)
                 .setAction(ACTION_START)
                 .putExtra(Scheduler.EXTRA_ALARM_ID, alarmId)
                 .putExtra(Scheduler.EXTRA_MODE, mode)
                 .putExtra(EXTRA_SILENT, silent)
+                .putExtra(EXTRA_GAUNTLET, gauntlet)
             ctx.startForegroundService(i)
         }
 
@@ -207,7 +212,11 @@ class AlarmService : Service() {
                     // Already ringing for real; don't downgrade to a wake-up check.
                     startForegroundCompat(buildNotification())
                 } else {
-                    startRinging(id, mode, intent.getBooleanExtra(EXTRA_SILENT, false))
+                    startRinging(
+                        id, mode,
+                        intent.getBooleanExtra(EXTRA_SILENT, false),
+                        intent.getBooleanExtra(EXTRA_GAUNTLET, false),
+                    )
                 }
             }
             ACTION_DISMISS -> dismiss()
@@ -216,9 +225,10 @@ class AlarmService : Service() {
         return START_STICKY
     }
 
-    private fun startRinging(id: Int, mode: String, silent: Boolean = false) {
+    private fun startRinging(id: Int, mode: String, silent: Boolean = false, gauntlet: Boolean = false) {
         isRinging = true
         isSilent = silent
+        isGauntlet = silent && gauntlet
         currentAlarmId = id
         currentMode = mode
         missionActive = false
@@ -477,6 +487,7 @@ class AlarmService : Service() {
     }
 
     fun dismiss() {
+        if (isRinging && isSilent && isGauntlet) Guard.removeProtection(this)
         val id = currentAlarmId
         val wasAlarm = currentMode == Scheduler.MODE_ALARM
         stopRinging {
@@ -517,6 +528,7 @@ class AlarmService : Service() {
         if (was && isSilent) {
             // Silent test: leave any real pending snooze / wake-up check alone.
             isSilent = false
+            isGauntlet = false
         } else if (was) {
             WatchBridge.send(this, WatchBridge.STOP)
             store.clearRinging()

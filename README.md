@@ -14,6 +14,9 @@ The only way to turn it off is to complete the alarm's missions.
   - 🔍 **Find the item**: walk to an item you registered in another room (like your toothpaste) and scan its barcode. Uses Google ML Kit + CameraX, so it reads codes at any angle, small or curved, and in dim light (with a flashlight button). It gives green/red feedback and 90 seconds of quiet to walk there. If you really can't find the item, a hard-math option unlocks after 5 minutes.
 - **Quiet while you work.** The sound drops while you're doing a mission and returns at full volume if you stop for 12 seconds.
 - **Wake-up check.** A few minutes after you dismiss the alarm, you have to confirm you're awake. If you don't, the full alarm starts again.
+- **Uninstall protection** (optional, in Settings). The app becomes a device admin, so Android won't uninstall it.
+  Switching that off in Android's settings locks the phone and sets off the full alarm until you finish your missions.
+  The clean way out is in the app: solve 10 very hard math problems and type 3 phrases, then uninstall normally.
 - **Limited snoozes** for each alarm (0–5).
 - **Hard to silence.** Alarm volume is forced to max every second. Volume and back buttons are ignored, and the alarm screen reopens if you leave it.
 - **Loud.** A built-in harsh siren by default. If you choose a gentler ringtone, the siren is added after 45 seconds. Also vibration, a flashlight strobe and a flashing max-brightness screen.

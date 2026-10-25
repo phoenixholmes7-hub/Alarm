@@ -59,6 +59,38 @@ class SettingsActivity : Activity() {
             },
         )
 
+        section("Uninstall protection")
+        val guarded = Guard.isOn(this)
+        group(
+            row("Protection", if (guarded) "✓ On" else "Off", if (guarded) Colors.OK else Colors.SUB) {},
+            if (guarded) {
+                row("Turn off (prove you're awake)", "›") {
+                    AlertDialog.Builder(this)
+                        .setTitle("Turn off protection?")
+                        .setMessage("You'll have to solve 10 very hard math problems and type 3 phrases. Then protection turns off and you can uninstall.")
+                        .setPositiveButton("Start") { _, _ -> Guard.startGauntlet(this) }
+                        .setNegativeButton("Keep it on", null)
+                        .show()
+                }
+            } else {
+                row("Turn on", "›") {
+                    try {
+                        startActivity(Guard.enableIntent(this))
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "Couldn't open the device admin screen", Toast.LENGTH_LONG).show()
+                    }
+                }
+            },
+        )
+        content.addView(
+            label(
+                "While it's on, Android won't let you uninstall the app. If you try to switch it off in Android's settings, " +
+                    "the phone locks and the full alarm goes off until you finish your missions.",
+                13f, Colors.DIM
+            ),
+            llp(top = 6)
+        )
+
         section("Galaxy Watch")
         val watchStatus = label("Checking…", 15f, Colors.SUB)
         val watchRow = horizontal().apply {

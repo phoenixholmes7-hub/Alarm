@@ -174,7 +174,8 @@ class AlarmActivity : Activity() {
 
     private fun addSilentBanner() {
         if (!AlarmService.isSilent) return
-        body.addView(label("🔇  Silent test: no sound", 14f, Colors.WARN, bold = true, center = true).apply {
+        val text = if (AlarmService.isGauntlet) "🛡  Prove you're awake to turn off protection" else "🔇  Silent test: no sound"
+        body.addView(label(text, 14f, Colors.WARN, bold = true, center = true).apply {
             background = rounded(0xFF2A2210.toInt(), 12)
             setPadding(dp(12), dp(8), dp(12), dp(8))
         }, llp(WRAP, WRAP).apply { bottomMargin = dp(12) })
@@ -198,8 +199,11 @@ class AlarmActivity : Activity() {
         clearMission()
         val a = alarm
         val checkSoon = mode == Scheduler.MODE_ALARM && a?.wakeCheck == true && alarmId != Store.PREVIEW_ID
+        val gauntlet = AlarmService.isGauntlet
         AlarmService.dismiss(this)
-        if (checkSoon) {
+        if (gauntlet) {
+            // Guard shows its own message.
+        } else if (checkSoon) {
             Toast.makeText(this, "Good morning! Wake-up check in ${store.checkDelayMin} min — stay up.", Toast.LENGTH_LONG).show()
         } else {
             Toast.makeText(this, "Good morning!", Toast.LENGTH_SHORT).show()
